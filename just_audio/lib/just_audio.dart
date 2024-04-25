@@ -947,6 +947,11 @@ class AudioPlayer {
     await (await _platform).setVolume(SetVolumeRequest(volume: volume));
   }
 
+  Future<void> setOutputDevice({required String deviceID}) async {
+    if (_disposed) return;
+    await (await _platform).setOutputDevice(SetOutputDeviceRequest(deviceID: deviceID));
+  }
+
   /// Sets whether silence should be skipped in audio playback. (Currently
   /// Android only).
   Future<void> setSkipSilenceEnabled(bool enabled) async {
