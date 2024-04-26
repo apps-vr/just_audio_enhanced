@@ -1228,6 +1228,9 @@ class AudioPlayer {
         if (_platformLoading && message.processingState != ProcessingStateMessage.idle) {
           _platformLoading = false;
         }
+        if (message.changeOutput != null) {
+          setOutputDevice(deviceID: message.changeOutput!);
+        }
         final playbackEvent = PlaybackEvent(
           // The platform may emit an idle state while it's starting up which we
           // override here.
@@ -1236,6 +1239,7 @@ class AudioPlayer {
           updatePosition: message.updatePosition,
           bufferedPosition: message.bufferedPosition,
           duration: duration,
+
           icyMetadata: message.icyMetadata == null ? null : IcyMetadata._fromMessage(message.icyMetadata!),
           currentIndex: index,
           androidAudioSessionId: message.androidAudioSessionId,
@@ -3231,11 +3235,12 @@ class _IdleAudioPlayer extends AudioPlayerPlatform {
     sequenceStream.listen((sequence) => _sequence = sequence);
   }
 
-  void _broadcastPlaybackEvent() {
+  void _broadcastPlaybackEvent({String? deviceID}) {
     var updateTime = DateTime.now();
     _eventSubject.add(PlaybackEventMessage(
       processingState: ProcessingStateMessage.idle,
       updatePosition: _position,
+      changeOutput: deviceID,
       updateTime: updateTime,
       bufferedPosition: Duration.zero,
       icyMetadata: null,
@@ -3324,6 +3329,12 @@ class _IdleAudioPlayer extends AudioPlayerPlatform {
     _index = request.index ?? _index;
     _broadcastPlaybackEvent();
     return SeekResponse();
+  }
+
+  @override
+  Future<SetOutputDeviceResponse> setOutputDevice(SetOutputDeviceRequest request) async {
+    _broadcastPlaybackEvent(deviceID: request.deviceID);
+    return SetOutputDeviceResponse();
   }
 
   @override

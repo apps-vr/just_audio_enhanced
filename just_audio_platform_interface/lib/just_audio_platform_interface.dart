@@ -251,6 +251,7 @@ class PlaybackEventMessage {
   final IcyMetadataMessage? icyMetadata;
   final int? currentIndex;
   final int? androidAudioSessionId;
+  final String? changeOutput;
 
   PlaybackEventMessage({
     required this.processingState,
@@ -259,6 +260,7 @@ class PlaybackEventMessage {
     required this.bufferedPosition,
     required this.duration,
     required this.icyMetadata,
+    this.changeOutput,
     required this.currentIndex,
     required this.androidAudioSessionId,
   });
@@ -271,6 +273,7 @@ class PlaybackEventMessage {
         duration: map['duration'] == null || map['duration'] as int < 0 ? null : Duration(microseconds: map['duration'] as int),
         icyMetadata: map['icyMetadata'] == null ? null : IcyMetadataMessage.fromMap(map['icyMetadata'] as Map<dynamic, dynamic>),
         currentIndex: map['currentIndex'] as int?,
+        changeOutput: map['deviceID'] is String ? map['deviceID'] as String : null,
         androidAudioSessionId: map['androidAudioSessionId'] as int?,
       );
 }

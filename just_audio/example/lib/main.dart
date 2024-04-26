@@ -32,7 +32,6 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   Future<void> _init() async {
-    _player.setOutputDevice(deviceID: '123');
     // Inform the operating system of our app's audio attributes etc.
     // We pick a reasonable default for an app that plays speech.
     final session = await AudioSession.instance;
@@ -48,6 +47,8 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
     } on PlayerException catch (e) {
       print("Error loading audio source: $e");
     }
+
+    await _player.setOutputDevice(deviceID: '123');
   }
 
   @override
