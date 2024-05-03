@@ -3221,7 +3221,7 @@ enum LoopMode { off, one, all }
 /// state and the native platform is deallocated.
 class _IdleAudioPlayer extends AudioPlayerPlatform {
   final _eventSubject = BehaviorSubject<PlaybackEventMessage>();
-  late Duration _position;
+  late Duration _position = Duration.zero;
   int? _index;
   List<IndexedAudioSource>? _sequence;
 

@@ -172,6 +172,10 @@
             result(@{});
         } else if ([@"setAndroidAudioAttributes" isEqualToString:call.method]) {
             result(@{});
+        }else if ([@"setOutputDevice" isEqualToString:call.method]) {
+            [self listAudioDevices];
+            [self setOutputDevice:(NSString *)request[@"deviceID"]];
+            result(@{});
         } else {
             result(FlutterMethodNotImplemented);
         }
@@ -189,6 +193,45 @@
 - (float)speed {
     return _speed;
 }
+
+- (void)listAudioDevices {
+    OSStatus status;
+    AudioObjectPropertyAddress propertyAddress;
+    AudioDeviceID deviceIds[64];
+    UInt32 dataSize = sizeof(deviceIds);
+    
+    propertyAddress.mSelector = kAudioHardwarePropertyDevices;
+    propertyAddress.mScope = kAudioObjectPropertyScopeGlobal;
+    propertyAddress.mElement = kAudioObjectPropertyElementMaster;
+    
+    status = AudioObjectGetPropertyData(kAudioObjectSystemObject, &propertyAddress, 0, NULL, &dataSize, &deviceIds);
+    if (status != kAudioHardwareNoError) {
+        NSLog(@"Error getting audio devices: %d", status);
+        return;
+    }
+    
+    int numDevices = dataSize / sizeof(AudioDeviceID);
+    NSLog(@"Number of devices: %d", numDevices);
+    
+    for(int i = 0; i < numDevices; ++i) {
+        AudioDeviceID deviceId = deviceIds[i];
+        CFStringRef deviceName = NULL;
+        dataSize = sizeof(CFStringRef);
+        propertyAddress.mSelector = kAudioDevicePropertyDeviceNameCFString;
+        
+        status = AudioObjectGetPropertyData(deviceId, &propertyAddress, 0, NULL, &dataSize, &deviceName);
+        if (status != kAudioHardwareNoError) {
+            NSLog(@"Error getting device name: %d", status);
+            continue;
+        }
+        
+        NSLog(@"Device ID: %d, Name: %@", deviceId, (__bridge NSString *)deviceName);
+        if (deviceName != NULL) {
+            CFRelease(deviceName);
+        }
+    }
+}
+
 
 // Untested
 - (void)concatenatingInsertAll:(NSString *)catId index:(int)index sources:(NSArray *)sources shuffleOrder:(NSArray<NSNumber *> *)shuffleOrder {
@@ -818,7 +861,10 @@
                 break;
             }
             case AVPlayerItemStatusFailed: {
-                //NSLog(@"AVPlayerItemStatusFailed");
+                NSLog(@"AVPlayerItemStatusFailed");
+                NSLog(@"Player item failed with error: %@", _player.currentItem.error.localizedDescription);
+                  NSLog(@"Error Domain: %@", _player.currentItem.error.domain);
+    NSLog(@"Error User Info: %@", _player.currentItem.error.userInfo);
                 [self sendErrorForItem:playerItem];
                 break;
             }
@@ -987,7 +1033,7 @@
 }
 
 - (void)sendError:(FlutterError *)flutterError playerItem:(IndexedPlayerItem *)playerItem {
-    //NSLog(@"sendError");
+    NSLog(@"sendError");
     if (_loadResult && playerItem == _player.currentItem) {
         _loadResult(flutterError);
         _loadResult = nil;
@@ -1060,7 +1106,7 @@
     _processingState = completed;
     [self broadcastPlaybackEvent];
     if (_playResult) {
-        //NSLog(@"PLAY FINISHED DUE TO COMPLETE");
+        NSLog(@"PLAY FINISHED DUE TO COMPLETE");
         _playResult(@{});
         _playResult = nil;
     }
@@ -1070,6 +1116,13 @@
     _volume = volume;
     if (_player) {
         [_player setVolume:volume];
+    }
+}
+
+- (void)setOutputDevice:(NSString *)deviceID {
+    if (_player) {
+        _player.audioOutputDeviceUniqueID = deviceID;
+        NSLog(@"OUTPUT DEVICE SET");
     }
 }
 
