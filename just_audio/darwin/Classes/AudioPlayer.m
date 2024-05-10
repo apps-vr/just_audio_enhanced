@@ -1,6 +1,8 @@
 #import "BetterEventChannel.h"
 #import "AudioPlayer.h"
 #import "AudioSource.h"
+#import <CoreAudio/CoreAudio.h>
+#import <AudioToolbox/AudioToolbox.h>
 #import "IndexedAudioSource.h"
 #import "LoadControl.h"
 #import "UriAudioSource.h"
@@ -38,6 +40,7 @@
     BOOL _bufferUnconfirmed;
     CMTime _seekPos;
     FlutterResult _loadResult;
+    NSString *_deviceUID;
     FlutterResult _playResult;
     id _timeObserver;
     BOOL _automaticallyWaitsToMinimizeStalling;
@@ -172,9 +175,13 @@
             result(@{});
         } else if ([@"setAndroidAudioAttributes" isEqualToString:call.method]) {
             result(@{});
-        }else if ([@"setOutputDevice" isEqualToString:call.method]) {
-            [self listAudioDevices];
-            [self setOutputDevice:(NSString *)request[@"deviceID"]];
+        }else if ([@"setOutputDevice" isEqualToString:call.method]) {  
+            if (@available(macOS 10.12, *)){
+            NSString *deviceIDString = request[@"deviceID"];
+            AudioDeviceID deviceID = (AudioDeviceID)[deviceIDString intValue];
+            _deviceUID = [self getUIDForDeviceWithID:deviceID];
+            [self setOutputDevice:(NSString *)_deviceUID];
+            }
             result(@{});
         } else {
             result(FlutterMethodNotImplemented);
@@ -194,43 +201,31 @@
     return _speed;
 }
 
-- (void)listAudioDevices {
+- (NSString *)getUIDForDeviceWithID:(AudioDeviceID)deviceID {
     OSStatus status;
-    AudioObjectPropertyAddress propertyAddress;
-    AudioDeviceID deviceIds[64];
-    UInt32 dataSize = sizeof(deviceIds);
+    UInt32 size;
+    CFStringRef deviceUID = NULL;
     
-    propertyAddress.mSelector = kAudioHardwarePropertyDevices;
-    propertyAddress.mScope = kAudioObjectPropertyScopeGlobal;
-    propertyAddress.mElement = kAudioObjectPropertyElementMaster;
+    // Set up the property address to get the device UID
+    AudioObjectPropertyAddress propertyAddress = {
+        kAudioDevicePropertyDeviceUID,
+        kAudioObjectPropertyScopeGlobal,
+        kAudioObjectPropertyElementMaster
+    };
     
-    status = AudioObjectGetPropertyData(kAudioObjectSystemObject, &propertyAddress, 0, NULL, &dataSize, &deviceIds);
-    if (status != kAudioHardwareNoError) {
-        NSLog(@"Error getting audio devices: %d", status);
-        return;
-    }
+    // Retrieve the size of the UID property
+    size = sizeof(deviceUID);
+    status = AudioObjectGetPropertyData(deviceID, &propertyAddress, 0, NULL, &size, &deviceUID);
     
-    int numDevices = dataSize / sizeof(AudioDeviceID);
-    NSLog(@"Number of devices: %d", numDevices);
-    
-    for(int i = 0; i < numDevices; ++i) {
-        AudioDeviceID deviceId = deviceIds[i];
-        CFStringRef deviceName = NULL;
-        dataSize = sizeof(CFStringRef);
-        propertyAddress.mSelector = kAudioDevicePropertyDeviceNameCFString;
-        
-        status = AudioObjectGetPropertyData(deviceId, &propertyAddress, 0, NULL, &dataSize, &deviceName);
-        if (status != kAudioHardwareNoError) {
-            NSLog(@"Error getting device name: %d", status);
-            continue;
-        }
-        
-        NSLog(@"Device ID: %d, Name: %@", deviceId, (__bridge NSString *)deviceName);
-        if (deviceName != NULL) {
-            CFRelease(deviceName);
-        }
+    if (status == noErr && deviceUID != NULL) {
+        NSString *uidString = (__bridge_transfer NSString *)deviceUID;
+        return uidString;
+    } else {
+        NSLog(@"Error getting device UID for device %u: %d", deviceID, status);
+        return nil;
     }
 }
+
 
 
 // Untested
@@ -1063,6 +1058,12 @@
 }
 
 - (void)play:(FlutterResult)result {
+    NSLog(@"Current deviceUID is: %@", _player.audioOutputDeviceUniqueID);
+    NSLog(@"Saved deviceUID is: %@", _deviceUID);
+    if (_deviceUID) { 
+        NSLog(@"Playing through device: %@", _deviceUID);
+        _player.audioOutputDeviceUniqueID = _deviceUID;
+    }
     if (_playing) {
         if (result) {
             result(@{});
@@ -1120,7 +1121,7 @@
 }
 
 - (void)setOutputDevice:(NSString *)deviceID {
-    if (_player) {
+    if (_player && @available(macOS 10.12, *)) {
         _player.audioOutputDeviceUniqueID = deviceID;
         NSLog(@"OUTPUT DEVICE SET");
     }
