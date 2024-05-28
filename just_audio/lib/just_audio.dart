@@ -108,6 +108,7 @@ class AudioPlayer {
   PlaybackEvent _playbackEvent = PlaybackEvent();
   final _playbackEventSubject = BehaviorSubject<PlaybackEvent>(sync: true);
   Future<Duration?>? _durationFuture;
+  String? _outputDeviceID;
   final _durationSubject = BehaviorSubject<Duration?>();
   final _processingStateSubject = BehaviorSubject<ProcessingState>();
   final _playingSubject = BehaviorSubject.seeded(false);
@@ -883,7 +884,11 @@ class AudioPlayer {
         } else {
           // If the native platform wasn't already active, activating it will
           // implicitly restore the playing state and send a play request.
-          _setPlatformActive(true, playCompleter: playCompleter)?.catchError((dynamic e) async => null);
+          _setPlatformActive(true, playCompleter: playCompleter)?.catchError((dynamic e) async => null).then((value) {
+            if (_outputDeviceID != null) {
+              setOutputDevice(deviceID: _outputDeviceID!);
+            }
+          });
         }
       }
     } else {
@@ -949,6 +954,7 @@ class AudioPlayer {
 
   Future<void> setOutputDevice({required String deviceID}) async {
     if (_disposed) return;
+    _outputDeviceID = deviceID;
     await (await _platform).setOutputDevice(SetOutputDeviceRequest(deviceID: deviceID));
   }
 
@@ -1229,7 +1235,7 @@ class AudioPlayer {
           _platformLoading = false;
         }
         if (message.changeOutput != null) {
-          setOutputDevice(deviceID: message.changeOutput!);
+          _outputDeviceID = message.changeOutput;
         }
         final playbackEvent = PlaybackEvent(
           // The platform may emit an idle state while it's starting up which we
