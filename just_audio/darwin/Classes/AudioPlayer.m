@@ -1,7 +1,7 @@
 #import "BetterEventChannel.h"
 #import "AudioPlayer.h"
 #import "AudioSource.h"
-#import <CoreAudio/CoreAudio.h>
+#import <CoreAudio/CoreAudioTypes.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import "IndexedAudioSource.h"
 #import "LoadControl.h"
