@@ -1,7 +1,11 @@
 #import "BetterEventChannel.h"
 #import "AudioPlayer.h"
 #import "AudioSource.h"
-#import <CoreAudio/CoreAudioTypes.h>
+#if TARGET_OS_IOS
+// skip import for ios
+#elif TARGET_OS_MAC
+#import <CoreAudio/CoreAudio.h>
+#endif
 #import <AudioToolbox/AudioToolbox.h>
 #import "IndexedAudioSource.h"
 #import "LoadControl.h"
@@ -176,12 +180,15 @@
         } else if ([@"setAndroidAudioAttributes" isEqualToString:call.method]) {
             result(@{});
         }else if ([@"setOutputDevice" isEqualToString:call.method]) {  
-            if (@available(macOS 10.12, *)){
+            #if TARGET_OS_IOS
+            // SKip for ios
+            #elif TARGET_OS_MAC
             NSString *deviceIDString = request[@"deviceID"];
             AudioDeviceID deviceID = (AudioDeviceID)[deviceIDString intValue];
             _deviceUID = [self getUIDForDeviceWithID:deviceID];
             [self setOutputDevice:(NSString *)_deviceUID];
-            }
+
+            #endif
             result(@{});
         } else {
             result(FlutterMethodNotImplemented);
@@ -200,7 +207,10 @@
 - (float)speed {
     return _speed;
 }
-
+    
+#if TARGET_OS_IOS
+// SKip for ios
+#elif TARGET_OS_MAC
 - (NSString *)getUIDForDeviceWithID:(AudioDeviceID)deviceID {
     OSStatus status;
     UInt32 size;
@@ -225,6 +235,7 @@
         return nil;
     }
 }
+#endif
 
 
 
@@ -1058,12 +1069,14 @@
 }
 
 - (void)play:(FlutterResult)result {
-    NSLog(@"Current deviceUID is: %@", _player.audioOutputDeviceUniqueID);
-    NSLog(@"Saved deviceUID is: %@", _deviceUID);
-    if (_deviceUID) { 
+    #if TARGET_OS_IOS
+    // Skip for ios
+    #elif TARGET_OS_MAC
+    if (_deviceUID) {
         NSLog(@"Playing through device: %@", _deviceUID);
         _player.audioOutputDeviceUniqueID = _deviceUID;
     }
+    #endif
     if (_playing) {
         if (result) {
             result(@{});
@@ -1121,10 +1134,14 @@
 }
 
 - (void)setOutputDevice:(NSString *)deviceID {
-    if (_player && @available(macOS 10.12, *)) {
+    #if TARGET_OS_IOS
+    // SKip for ios
+    #elif TARGET_OS_MAC
+    if (_player) {
         _player.audioOutputDeviceUniqueID = deviceID;
         NSLog(@"OUTPUT DEVICE SET");
     }
+    #endif
 }
 
 - (void)setSpeed:(float)speed {
