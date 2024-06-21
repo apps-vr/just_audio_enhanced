@@ -78,9 +78,8 @@ class MethodChannelAudioPlayer extends AudioPlayerPlatform {
 
   @override
   Future<SetOutputDeviceResponse> setOutputDevice(SetOutputDeviceRequest request) async {
-    var result = await _channel.invokeMethod('setOutputDevice', request.toMap());
-    if (result! is Map) return SetOutputDeviceResponse();
-    return SetOutputDeviceResponse.fromMap((await _channel.invokeMethod('setOutputDevice', request.toMap()))!);
+    await _channel.invokeMethod('setOutputDevice', request.toMap());
+    return SetOutputDeviceResponse();
   }
 
   @override
